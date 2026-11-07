@@ -5,6 +5,10 @@ Built with Electron, React, TypeScript, Tailwind, Zustand, FFmpeg, Express, Pris
 
 > **Status: v0.1.0 — working core.** What is implemented, tested and what is not is listed honestly below.
 
+## Download (Windows 10/11, x64)
+**[VisionCut-Studio-Setup-0.1.0.exe](https://github.com/emdadulshezan10-spec/visioncut-studio/releases/latest)** (235 MB) from the Releases page.
+The installer is **unsigned**, so Windows SmartScreen will warn: choose *More info → Run anyway*. Verify the download against the SHA-256 shown in the release notes.
+
 ## Features
 
 | Area | Implemented |
