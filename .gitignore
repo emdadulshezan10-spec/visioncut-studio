@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dist-electron/
+release/
+.env
+.env.*
+!.env.example
+*.log
+.vscode/
+.idea/
+coverage/
+*.tmp
+# Never commit user media or recovery data
+recovery/

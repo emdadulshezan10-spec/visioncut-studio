@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["electron", "server", "src/types", "src/utils", "src/editor/timeline/ops.ts", "vite.config.mts", "tests"]
+}
+
+
+

@@ -1,0 +1,148 @@
+// VisionCut Studio database schema (PostgreSQL, designed for Supabase).
+// `users.id` equals the Supabase Auth user id (auth.users.id). Passwords are NEVER stored here:
+// Supabase Auth keeps only a salted bcrypt hash in its own private `auth` schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  free
+  pro
+  premium
+}
+
+enum SubscriptionStatus {
+  active
+  trialing
+  past_due
+  canceled
+}
+
+model User {
+  id               String   @id @db.Uuid
+  fullName         String   @map("full_name")
+  email            String   @unique
+  profileImage     String?  @map("profile_image") // storage path in the `avatars` bucket
+  createdAt        DateTime @default(now()) @map("created_at")
+  lastLogin        DateTime? @map("last_login")
+  subscriptionPlan Plan     @default(free) @map("subscription_plan")
+
+  projects      Project[]
+  files         ProjectFile[]
+  subscription  Subscription?
+  exports       ExportHistory[]
+  preferences   UserPreference?
+
+  @@map("users")
+}
+
+model Project {
+  id          String    @id // client-generated id (prj_xxxxxxxx), unique across users
+  userId      String    @map("user_id") @db.Uuid
+  name        String
+  /// Full timeline/project JSON (clips, tracks, markers). Local file paths are reduced to file names before upload.
+  data        Json
+  thumbnail   String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files     ProjectFile[]
+  settings  ProjectSetting?
+  exports   ExportHistory[]
+
+  @@index([userId, updatedAt])
+  @@map("projects")
+}
+
+model ProjectFile {
+  id          String   @id @default(uuid()) @db.Uuid
+  projectId   String   @map("project_id")
+  userId      String   @map("user_id") @db.Uuid
+  name        String
+  kind        String // video | audio | image
+  mimeType    String?  @map("mime_type")
+  sizeBytes   BigInt   @default(0) @map("size_bytes")
+  /// Set ONLY after the user explicitly uploaded this file to Supabase Storage. NULL = local-only (default).
+  storagePath String?  @map("storage_path")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_files")
+}
+
+model ProjectSetting {
+  projectId       String  @id @map("project_id")
+  width           Int     @default(1920)
+  height          Int     @default(1080)
+  fps             Int     @default(30)
+  aspectLabel     String  @default("16:9 Landscape") @map("aspect_label")
+  backgroundColor String  @default("#000000") @map("background_color")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_settings")
+}
+
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String             @unique @map("user_id") @db.Uuid
+  plan               Plan               @default(free)
+  status             SubscriptionStatus @default(active)
+  /// Usage limits for the plan, e.g. {"maxProjects":5,"maxStorageMb":0,"maxExportHeight":1080}
+  limits             Json
+  /// Filled only if/when a real payment provider is connected. No payment processing exists in this app.
+  provider           String?
+  providerCustomerId String?            @map("provider_customer_id")
+  currentPeriodEnd   DateTime?          @map("current_period_end")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model ExportHistory {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  projectId   String?  @map("project_id")
+  format      String
+  codec       String
+  resolution  String
+  fps         Int
+  sizeBytes   BigInt   @map("size_bytes")
+  durationSec Float    @map("duration_sec")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("export_history")
+}
+
+model UserPreference {
+  userId             String  @id @map("user_id") @db.Uuid
+  autosaveSeconds    Int     @default(15) @map("autosave_seconds")
+  cloudSyncEnabled   Boolean @default(false) @map("cloud_sync_enabled")
+  /// Explicit consent flag for uploading media to cloud storage. Default OFF.
+  cloudUploadEnabled Boolean @default(false) @map("cloud_upload_enabled")
+  theme              String  @default("dark")
+  extra              Json    @default("{}")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
